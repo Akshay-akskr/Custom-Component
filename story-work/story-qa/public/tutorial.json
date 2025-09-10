@@ -1,0 +1,14 @@
+[ 
+  {
+    "messages": [
+      "Check out my ramp",
+      "it's different colours and each colour has a name.",
+      "Look 'Never' is at the bottom, then 'Sometimes' and here at the very top is 'Always'. ",
+      "Do you think you can do this whole thing without a grown-up?",
+      "Let's say I never get tired during the day - can you choose 'Never' for me?"
+    ]
+  },
+  {
+    "labels" : ["Never", "Sometimes", "Always"]
+  }
+]

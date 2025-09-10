@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "instruction": "I enjoy playing with my friends",
+    "question": "Do you enjoy playing with your friends?",
+    "options": ["Never", "Sometimes", "Always"],
+    "background": "mountains.jpg",
+    "style": "ramp"
+  },
+  {
+    "id": 2,
+    "instruction": "I enjoy school",
+    "question": "Do you enjoy school?",
+    "options": ["Never", "Sometimes", "Always"],
+    "background": "city.jpg",
+    "style": "ramp"
+  },
+  {
+    "id": 3,
+    "instruction": "I enjoy playground games",
+    "question": "Do you enjoy playground games?",
+    "options": ["Never", "Sometimes", "Always"],
+    "background": "forest.jpg",
+    "style": "ramp"
+  },
+  {
+    "id": 4,
+    "instruction": "I love white color",
+    "question": "What is your favourite color ?",
+    "options": ["Blue", "Green", "Yellow", "Red", "Orange", "Black", "White"],
+    "background": "forest.jpg",
+    "style": "ramp"
+  },
+  {
+    "id": 5,
+    "instruction": "I love to visit places",
+    "question": "What is your favourite place to visit ?",
+    "options": ["London", "Paris", "New York"],
+    "background": "city.jpg",
+    "style": "ramp"
+  }
+]

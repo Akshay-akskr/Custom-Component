@@ -1,0 +1,18 @@
+[ 
+  {
+    "characters": [
+      {"id":"coolboy.png", "text":"Pick me!"},
+      {"id":"coolgirl.png", "text":"Choose me!"},
+      {"id":"formalboy.png", "text":"Me me me!"},
+      {"id":"formalgirl.png", "text":"I am here!"}
+    ]
+  },
+  {
+    "charactermoves" : [
+      {"id":"jump", "text":"Jump", "animation":"jump"},
+      {"id":"slide", "text":"Slide", "animation":"slide"},
+      {"id":"zoom", "text":"Zoom", "animation":"zoom"},
+      {"id":"teleport", "text":"Teleport", "animation":"teleport"}
+    ]
+  }
+]

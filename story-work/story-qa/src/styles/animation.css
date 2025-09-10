@@ -1,0 +1,169 @@
+.progress-wrapper {
+  width: 100%;
+  max-width: 400px;
+  margin: 20px auto;
+  text-align: center;
+  font-family: sans-serif;
+}
+
+.progress-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #f6f7f8, #c4c5c6);
+  transition: width 0.1s linear;
+}
+
+.progress-label {
+  margin-top: 8px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.slide-scale-image {
+  width: 200px;
+  height: auto;
+  opacity: 0;
+  transform: translateX(50px) scale(0.5);
+  animation: slideScaleFade 1.5s ease-out forwards;
+}
+
+@keyframes slideScaleFade {
+  0% {
+    opacity: 0;
+    transform: translateX(50px) scale(0.5);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateX(20px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.rotate-fade {
+  width: 200px;
+  height: auto;
+  opacity: 0;
+  animation: rotateFade 1.5s ease-out forwards;
+}
+
+@keyframes rotateFade {
+  0% {
+    opacity: 0;
+    rotate: -20deg;
+  }
+  50% {
+    opacity: 0.5;
+    rotate: -10deg;
+  }
+  100% {
+    opacity: 1;
+    rotate: 0deg;
+  }
+}
+
+.slide {
+  transform: translateX(40px) scale(0.6);
+  animation: slideAnim 1s ease-in-out infinite;
+}
+
+@keyframes slideAnim {
+  0% {
+    transform: translateX(40px) scale(0.6);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+
+.jump {
+  animation: jumpAnim 1s ease-in-out infinite;
+}
+
+@keyframes jumpAnim {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.teleport {
+  animation: teleportAnim 3s ease-in-out infinite;
+  opacity: 1;
+}
+
+@keyframes teleportAnim {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translateX(60px);
+    opacity: 0;
+  }
+  50% {
+    transform: translateX(-60px);
+  }
+  55% {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.zoom {
+  animation: zoomAnim 1s ease-in-out infinite;
+}
+
+@keyframes zoomAnim {
+  0%, 100% {
+    transform: scale(0.8);
+  }
+  33% {
+    transform: scale(0.9);
+  }
+  67% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1.0);
+  }
+}
+
+.rotate {
+  animation: rotateAnim 4s linear infinite;
+}
+
+@keyframes rotateAnim {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pink-glow-hover {
+  transition: box-shadow 0.3s ease;
+}
+.pink-glow-hover:hover {
+  box-shadow: 0 0 15px 5px rgba(255, 20, 147, 0.6); /* DeepPink */
+}
+

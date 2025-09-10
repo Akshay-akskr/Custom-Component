@@ -1,0 +1,51 @@
+.ramp-container {
+  display: flex;
+  overflow: hidden;
+  height: 40vh;
+  width: 86vw;
+  margin-left: 2vw;
+  border: 0px solid black;
+  background: transparent;
+  clip-path: polygon(0 75%, 100% 0, 100% 100%, 0% 100%)
+}
+
+.ramp-block {
+  height: 100%;
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  margin-right: -20px; /* slight overlap */
+  z-index: 1;
+  transition: transform 0.3s ease;
+}
+
+.block-0 {
+  clip-path: polygon(0 75%, 75% 50%, 100% 100%, 0% 100%);
+}
+
+.block-1 {
+  clip-path: polygon(0 50%, 100% 25%, 75% 100%, 25% 100%);
+}
+
+.block-2 {
+  clip-path: polygon(25% 25%, 100% 0, 100% 100%, 0 100%);
+}
+
+
+.ramp-block:hover {
+  transform: skewX(-20deg) scale(1.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.ramp-label {
+  color: white;
+  font-weight: bold;
+  font-size: 1.1rem;
+  text-align: center;
+  width: 100%;
+  position: fixed;
+}
