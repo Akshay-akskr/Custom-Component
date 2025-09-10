@@ -1,0 +1,69 @@
+<!DOCTYPE HTML> 
+<html>
+<head> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+<title>HNW</title> 
+<link href="favicon.ico" rel="browser icon" type="image/x-icon">
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+<!-- third party libraries -->
+<script src="lib/url.min.js"></script>
+<script src="lib/cryptojs/hmac-sha1.js"></script>
+<script src="lib/cryptojs/enc-base64-min.js"></script>
+
+<!-- source files -->
+<script src="app/oauth-signature.js"></script>
+
+<script>
+
+var doParseData = function(){
+
+	/*var httpMethod = 'GET',
+    url = 'http://photos.example.net/photos',
+    parameters = {
+        oauth_consumer_key : 'dpf43f3p2l4k3l03',
+        oauth_token : 'nnch734d00sl2jdk',
+        oauth_nonce : 'kllo9940pd9333jh',
+        oauth_timestamp : '1191242096',
+        oauth_signature_method : 'HMAC-SHA1',
+        oauth_version : '1.0',
+        file : 'vacation.jpg',
+        size : 'original'
+    },
+    consumerSecret = 'kd94hf93k423kf44',
+    tokenSecret = 'pfkkdhi9sl3r4s00';*/
+	
+	var httpMethod = 'GET',
+    url = 'https://connectapi.garmin.com/oauth-service/oauth/access_token',
+    parameters = {
+        oauth_consumer_key : '5e5f558e-b9ef-4373-afbc-1821651b5e7c',
+        oauth_token : '8038760f-a93c-4e34-9737-042d2fe94d6a',
+        oauth_nonce : '6636549972',
+        oauth_timestamp : '1678865259',
+        oauth_signature_method : 'HMAC-SHA1',
+        oauth_version : '1.0',
+		oauth_verifier : 'ppt9DUSEo7'
+    },
+    consumerSecret = '5m0hSBUImv8lDzcsfR0AR3sttH1kK2xOeZS',
+    tokenSecret = 'El58JizDFmh0ehH4jCEyISlLzEyjiV6LzMQ';
+	
+	
+	
+    // generates a RFC 3986 encoded, BASE64 encoded HMAC-SHA1 hash
+    var encodedSignature = oauthSignature.generate(httpMethod, url, parameters, consumerSecret, tokenSecret);
+    // generates a BASE64 encode HMAC-SHA1 hash
+    var signature = oauthSignature.generate(httpMethod, url, parameters, consumerSecret, tokenSecret, {encodeSignature: false});
+		
+	console.log("signature >>", signature);		//tR3+Ty81lMeYAr/Fid0kMTYa/WM=
+	console.log("encoded Signature >>", encodedSignature);		//tR3%2BTy81lMeYAr%2FFid0kMTYa%2FWM%3D
+}
+
+</script>
+
+</head> 
+
+<body id='page_body' onload="doParseData()">
+</body>
+</html>

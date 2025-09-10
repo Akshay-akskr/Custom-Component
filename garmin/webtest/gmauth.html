@@ -1,0 +1,112 @@
+<!DOCTYPE HTML> 
+<html>
+<head> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+<title>HNW</title> 
+<link href="favicon.ico" rel="browser icon" type="image/x-icon">
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="sha1.js"></script> 
+<script src="oauth-signature.js"></script>
+<script>
+function doGCAuth()
+{        
+	var timestamp = new Date().getTime();
+	const ts = Math.floor(timestamp / 1000);
+	
+	const nonce = generatenonce(12);
+	
+	const apiURL = "https://connectapi.garmin.com/oauth-service/oauth/request_token";
+	
+	const cKey = "5e5f558e-b9ef-4373-afbc-1821651b5e7c";	
+	const cSec = "5m0hSBUImv8lDzcsfR0AR3sttH1kK2xOeZS";
+	
+	
+	var requestParams = "oauth_consumer_key="+cKey+"&oauth_signature_method=HMAC-SHA1&oauth_timestamp="+ts+"&oauth_nonce="+nonce+"&oauth_version=1.0";
+	
+	var hmacObj = new jsSHA(apiURL, "TEXT");
+	var sign = hmacObj.getHMAC(cSec,'B64','SHA-1','B64');	
+	console.log("sign >>>>>", sign);
+	
+	requestParams = requestParams + "&oauth_signature="+encodeURIComponent(sign);
+	
+	requestURL = apiURL + "?" + requestParams;
+	console.log("requestURL >>>>>", requestURL);
+	$.ajax({
+		url:apiURL,
+		success: function(json) {
+			console.log("Success", json);
+		},
+		error: function(XMLHttpRequest, textStatus, errorThrown) {
+		   console.log(textStatus, errorThrown);
+		},
+		beforeSend: function (xhr) {
+			xhr.setRequestHeader ("Authorization", "OAuth " + requestParams.replaceAll('=','="').replaceAll('&','", ')+'"');
+		},
+		type: 'GET',
+		contentType: 'json',
+	});
+	
+	
+	
+	/*var httpMethod = 'POST',
+	url = apiURL,
+	parameters = {
+		oauth_consumer_key : cKey,
+		oauth_nonce : nonce,
+		oauth_timestamp : ts,
+		oauth_signature_method : 'HMAC-SHA1',
+		oauth_version : '1.0'
+	},
+	consumerSecret = cSec;
+	// generates a RFC 3986 encoded, BASE64 encoded HMAC-SHA1 hash
+	var encodedSignature = oauthSignature.generate(httpMethod, url, parameters, consumerSecret);
+	// generates a BASE64 encode HMAC-SHA1 hash
+	var signature = oauthSignature.generate(httpMethod, url, parameters, consumerSecret, { encodeSignature: false});
+	
+	console.log(encodedSignature, "signature >>>>>", signature);*/
+	
+	
+	/*processSignature(cSec).then((signature) => {
+		
+		var requestURL = apiURL +"?oauth_consumer_key="+cKey+"&oauth_signature_method=HMAC-SHA1&oauth_timestamp="+ts+"&oauth_nonce="+nonce+"&oauth_version=1.0&oauth_signature="+signature;
+		$.ajax({
+			url:requestURL,
+			dataType: "text",
+		})
+		.always(function(data, textStatus, jqxhr) {
+			console.log(textStatus, ">>>>>", data);
+		});		
+	})*/
+}
+
+var generatenonce = function(length) {
+    var text = "";
+    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    for(var i = 0; i < length; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+}
+
+var processSignature = function(password) {
+			
+	var encodedPswd = new TextEncoder("utf-8").encode(password);
+	const algorithm = { name: "HMAC", hash: "SHA-256" };
+	return window.crypto.subtle.importKey('raw', encodedPswd, algorithm, false, ['sign', 'verify']).then(function (baseKey) {
+		return baseKey;
+	}).catch (function (err) {	
+		console.log('Encryption Error: ' + err.message);
+	});
+}
+
+</script>
+
+</head> 
+<body id='page_body' onload="doGCAuth()">
+	<div id="bgdiv" class="bgimg">
+		
+	</div>
+</body>
+</html>

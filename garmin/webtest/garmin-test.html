@@ -1,0 +1,77 @@
+<!DOCTYPE HTML> 
+<html>
+<head> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+<title>HNW</title> 
+<link href="favicon.ico" rel="browser icon" type="image/x-icon">
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+<script>
+
+var registertoken;
+var registersecret;
+var requestURL = "https://tslwellnessapp.mobilous.com/garmin/requestToken";
+var redirectURL = "https://tslwellnessapp.mobilous.com/hnw/index.html";
+var accessURL = "https://tslwellnessapp.mobilous.com/garmin/accessToken";
+
+
+function doRegister()
+{	
+	$.ajax({
+		url: requestURL,
+		success: function(json) {			
+			registertoken = json['oauthtoken'];
+			registersecret = json['oauthsecret'];
+			//console.log("Success", registertoken, registersecret);
+			
+			var consentURL = "https://connect.garmin.com/oauthConfirm?oauth_token="+registertoken+"&oauth_callback="+redirectURL;
+			//console.log("consentURL >>", consentURL);
+			window.open(consentURL);
+		},
+		error: function(XMLHttpRequest, textStatus, errorThrown) {
+		   console.log(textStatus, errorThrown);
+		},
+		type: 'POST',
+		contentType: 'json',
+	});
+	
+}
+
+function doAuth()
+{	
+	let verifierVal = document.getElementById('verifier').value;
+
+	$.ajax({
+		url: 	accessURL,
+		success: function(json) {			
+			console.log("Success", json);
+		},
+		error: function(XMLHttpRequest, textStatus, errorThrown) {
+		   console.log(textStatus, errorThrown);
+		},
+		type: 'POST',
+		contentType: 'json',
+		headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+		data: {k: registertoken, v: verifierVal, s:registersecret}
+	});	
+}
+
+
+
+
+</script>
+
+</head> 
+<body id='page_body' style="height:100vh; width:100vh;">
+	<div id="registerdiv" style="margin:10px;" >
+		<button onclick="doRegister()">Get Register</button>
+	</div>
+	<span style="margin:10px;">Verifier</span>
+	<input type="text" id="verifier" name="verifier">
+	<div id="authdiv" style="margin:10px;" >
+		<button onclick="doAuth()">Do Auth</button>
+	</div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>Getting server updates</h1>
+<div id="result"></div>
+
+<script>
+if(typeof(EventSource) !== "undefined") {
+  var source = new EventSource("https://tslwellnessapp.mobilous.com/garmin/wellness?id=596ff1db-e6bd-4bd0-b6e6-519297633c74&type=activities");
+  source.onmessage = function(event) {
+    document.getElementById("result").innerHTML += event.data + "<br>";
+  };
+  
+  source.addEventListener('open', function(e) {
+	document.getElementById("result").innerHTML += "Connection was opened" + "<br>";
+  }, false);
+
+  source.addEventListener('error', function(e) {
+	if (e.readyState == EventSource.CLOSED) {
+		document.getElementById("result").innerHTML += "Connection was closed due to EventSource.CLOSED" + "<br>";
+	}
+	source.close();
+	document.getElementById("result").innerHTML += "Connection was closed" + "<br>";
+  }, false);
+  
+} else {
+  document.getElementById("result").innerHTML = "Sorry, your browser does not support server-sent events...";
+}
+</script>
+
+</body>
+</html>
