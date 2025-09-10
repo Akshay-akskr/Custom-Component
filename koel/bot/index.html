@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOEL Service</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style> 
+        body { background-color: #f8f9fa; }
+		p {margin:0}
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+	<link rel="stylesheet" href="css/chat-bot.css">
+	<link rel="stylesheet" href="css/voice-input.css">	
+	<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.2/dist/purify.min.js""></script>
+    	
+</head>
+
+<body>
+    <div class="container mt-3">
+        <div class="chatbox-container" id="chatbox-container">
+            <div class="chatbox" id="chatbox">
+                <div class="message-container">
+                </div>
+            </div>
+        </div>
+		
+		<input type="file" id="imageFile" accept="image/*" style="display: none;">
+		<input type="file" id="photoFile" accept="image/*" capture="environment" style="display: none;">
+        <div id="textgroup" class="input-group">
+            <input type="text" id="userInput" class="form-control">
+            <button id="sendInput" class="send recording" style="display: none;" onclick="sendText()"></button>
+			<button id="startRecord" class="start record" title="Start Recording" onclick="recordVoice()"></button>
+			<div id="waveform" class="waveform borderdiv">
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+				<div class="bar"></div>
+			</div>
+			<button id="stopRecord" class="progress record" title="Stop Recording" onclick="stopRecording()"></button>
+        </div>
+		
+    </div>
+
+    <script>
+        	
+		let activeInstanceId = null;
+        let activeSpn = null;
+        let activeFmi = null;
+		let spnfmiCodes = [];
+		let moveSOP = false;
+		let stepcount = 0;
+		
+		let translations = {};
+		let currentLang = "en";
+		let speechCode = "en-US";
+		let langArray = [{lang:'en', code:'en-US'},{lang:'hi', code:'hi-IN'},{lang:'te', code:'te-IN'},{lang:'ta', code:'ta-IN'},{lang:'mr', code:'mr-IN'}];
+	
+		function init() {
+			const appURL = window.location.href;
+			let paramString = appURL.split('?')[1];
+			let queryString = new URLSearchParams(paramString);
+			for(let pair of queryString.entries()) {
+				if(pair[0] === "lang") {
+					const selectedLang = pair[1];
+					const langObj = langArray.find((element) => element['lang'] === selectedLang);
+					currentLang = (langObj) ? langObj['lang'] : "en";
+					speechCode =  (langObj) ? langObj['code'] : "en-US";
+					console.log("lang *************", currentLang, speechCode);					
+				}	
+			}
+			
+			(async () => {
+				const res = await fetch("translation.json");
+				translations = await res.json();
+				console.info("translations *************", translations);
+
+				const inputField = document.getElementById("userInput");
+				inputField.placeholder = translateText('type_message') + "....";				
+				
+				addBotMessage("welcome");
+				addBotMessage("ask_asset_id");
+			})();
+		};
+		
+		function scrollToBottom() {
+            const chatboxContainer = document.getElementById("chatbox-container");
+            chatboxContainer.scrollTop = chatboxContainer.scrollHeight;
+        }
+		
+		
+		<!-- ---------------- User Input ---------------- -->
+		
+		document.getElementById("userInput").addEventListener("input", (event) => {
+			const msg = event.target.value;
+			if (msg.trim() !== "") {
+				document.getElementById("sendInput").style.display = "block";
+				document.getElementById("startRecord").style.display = "none";			
+			}else{
+				document.getElementById("sendInput").style.display = "none";
+				document.getElementById("startRecord").style.display = "block";
+			}		
+		});
+		
+		 document.getElementById("userInput").addEventListener("keyup", function (event) {
+            if (event.keyCode === 13) {
+                sendText();
+            }
+        });
+		
+		function sendText() {
+            let userInput = document.getElementById("userInput").value;
+            if (userInput.trim() !== "") {
+                addUserMessage(userInput);
+				
+				/*if(!isNaN(userInput.trim())){
+					activeInstanceId = userInput;
+					sendMessage(true);
+				}else{
+					sendMessage(false, userInput);
+				}*/
+				
+				if(activeInstanceId === null) {
+					const numValue = (userInput.match(/\d+/g) || []).map(Number);
+					if(numValue === null || (numValue.length == 0)){
+						addBotMessage("missing_asset_id");					
+					}else{
+						activeInstanceId = numValue[0].toString();
+						sendMessage(true);
+					}
+				}else{
+					sendMessage(false, userInput);
+				}
+				
+                document.getElementById("userInput").value = "";				
+				document.getElementById("sendInput").style.display = "none";
+				document.getElementById("startRecord").style.display = "block";					
+            }
+        }
+		
+		<!-- ---------------- Voice Input ---------------- -->
+		
+		const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+        //document.getElementById("startRecord").addEventListener("click", async () => {
+		async function recordVoice() {
+			const iosCheck = (currentLang.indexOf("en") === -1 && isIOS()) ? true : false;
+			if (iosCheck) {
+				console.info("iOS device detected. Triggering native speech recognition...");
+		 
+				// Trigger iOS native handler, e.g., using WebKit message handler
+				if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iOSVoiceInput) {
+					document.getElementById("userInput").style.display = "none";	
+					document.getElementById("startRecord").style.display = "none";
+					document.getElementById("waveform").style.display = "flex";	
+					document.getElementById("stopRecord").style.display = "block";
+				
+					window.webkit.messageHandlers.iOSVoiceInput.postMessage({ language: speechCode });
+				}
+		 
+				return; // Don't use Web Speech API
+			}
+			
+			recognition.lang = speechCode;
+			recognition.start(); // Start listening
+			
+			recognition.onaudiostart = () => {
+				document.getElementById("userInput").style.display = "none";	
+				document.getElementById("startRecord").style.display = "none";
+				document.getElementById("waveform").style.display = "flex";	
+				document.getElementById("stopRecord").style.display = "block";
+			};
+			recognition.onaudioend = () => {
+				document.getElementById("waveform").style.display = "none";
+				document.getElementById("stopRecord").style.display = "none";
+				document.getElementById("userInput").style.display = "flex";
+				
+				const userInput = document.getElementById("userInput").value;
+				if (userInput.trim() === "") {
+					document.getElementById("startRecord").style.display = "block";
+				}
+			};
+
+			// Handle speech result
+			recognition.onresult = function(event) {
+				const transcript = event.results[0][0].transcript; // Get transcribed text
+				console.info("transcript...", transcript);	
+
+				const userMessage = document.getElementById("userInput");
+				userMessage.value = transcript;
+				
+				document.getElementById("sendInput").style.display = "block";
+				document.getElementById("startRecord").style.display = "none";
+				document.getElementById("waveform").style.display = "none";
+				document.getElementById("stopRecord").style.display = "none";
+				document.getElementById("userInput").style.display = "flex";				
+			};
+
+			// Handle errors
+			recognition.onerror = function(event) {
+				console.error("Speech Recognition Error:", event.error);
+				//alert("Speech recognition failed. Please try again.");
+				recognition.stop();
+			};
+		}
+		
+		async function stopRecording() {
+			console.info("Stop listening ...");
+			recognition.stop(); // Stop listening
+			
+			
+			
+			document.getElementById("waveform").style.display = "none";
+			document.getElementById("stopRecord").style.display = "none";
+			document.getElementById("userInput").style.display = "flex";
+			
+			const userInput = document.getElementById("userInput").value;
+			if (userInput.trim() === "") {
+				document.getElementById("startRecord").style.display = "block";
+				document.getElementById("sendInput").style.display = "none";
+			}else{				
+				document.getElementById("startRecord").style.display = "none";
+				document.getElementById("sendInput").style.display = "block";
+			}
+		}
+		
+		function handleiOSTranscript(transcript) {
+			console.info("IOS transcript...", transcript);
+			const userMessage = document.getElementById("userInput");
+			userMessage.value = transcript;
+
+			document.getElementById("sendInput").style.display = "block";
+			document.getElementById("startRecord").style.display = "none";
+			document.getElementById("waveform").style.display = "none";
+			document.getElementById("stopRecord").style.display = "none";
+			document.getElementById("userInput").style.display = "flex";
+		}
+		
+		
+		<!-- ---------------- Services ---------------- -->		
+		
+
+        function sendMessage(assetid, userInput) {		
+			if(assetid && activeInstanceId.trim().length > 0){
+				if(!isNaN(activeInstanceId.trim())){
+					//confirm Asset ID
+					setTimeout(() => {
+						addBotMessage("confirm_asset_id", `: ${activeInstanceId}`, [
+							{ text: "yes", response: "confirm-assetid" },
+							{ text: "no", response: "reject-assetid" }
+						]);
+					}, 500);
+				}
+				
+			}else{
+				if(activeInstanceId === null){
+					addBotMessage("missing_asset_id");
+				}else{
+					handleResponse(userInput);
+				}
+			}
+        }
+
+        function addUserMessage(messageKey, translate=false) {
+			let text = (translate) ? translateText(messageKey) : messageKey;
+			
+			enableInputGroup();
+		
+            const chatbox = document.getElementById("chatbox");
+            let messageContainer = document.createElement("div");
+            messageContainer.className = "message-container";
+            let userAvatar = document.createElement("img");
+            userAvatar.src = "icons/user.png";
+            userAvatar.className = "avatar user-avatar";
+            userAvatar.alt = "User";
+            let userMessage = document.createElement("div");
+            userMessage.className = "message user-message";
+            userMessage.innerText = text;
+            messageContainer.appendChild(userMessage);
+            messageContainer.appendChild(userAvatar);
+            chatbox.appendChild(messageContainer);
+            scrollToBottom();
+        }
+		
+		function addUserTranslatedMessage(text) {			
+			enableInputGroup();
+			
+			(async () => {
+				const translatedText = await translateText(text, currentLang);
+		
+				const chatbox = document.getElementById("chatbox");
+				let messageContainer = document.createElement("div");
+				messageContainer.className = "message-container";
+				let userAvatar = document.createElement("img");
+				userAvatar.src = "icons/user.png";
+				userAvatar.className = "avatar user-avatar";
+				userAvatar.alt = "User";
+				let userMessage = document.createElement("div");
+				userMessage.className = "message user-message";
+				userMessage.innerText = translatedText;
+				messageContainer.appendChild(userMessage);
+				messageContainer.appendChild(userAvatar);
+				chatbox.appendChild(messageContainer);
+				scrollToBottom();
+			
+			})();
+        }
+		
+		function addUserImage(filename, data) {
+			if(botButtonsGroup){
+				botButtonsGroup.forEach(button => button.onclick = null);
+			}
+            const chatbox = document.getElementById("chatbox");
+            let messageContainer = document.createElement("div");
+            messageContainer.className = "message-container";
+            let userAvatar = document.createElement("img");
+            userAvatar.src = "icons/user.png";
+            userAvatar.className = "avatar user-avatar";
+            userAvatar.alt = "User";			
+			
+			let userMessage = document.createElement("div");
+            userMessage.className = "message user-message";            
+			let userImage = document.createElement("img");
+            userImage.className = "user-image";
+            userImage.src = data;
+			userImage.alt = filename;
+            userMessage.appendChild(userImage);
+            messageContainer.appendChild(userMessage);
+            messageContainer.appendChild(userAvatar);
+            chatbox.appendChild(messageContainer);
+            scrollToBottom();
+        }
+		
+		function showTypingIndicator() {
+			disableInputGroup();		
+		
+            const chatbox = document.getElementById("chatbox");
+            let messageContainer = document.createElement("div");
+			messageContainer.id = "wait-message";
+            messageContainer.className = "message-container";
+            let botAvatar = document.createElement("img");
+            botAvatar.src = "icons/bot.png";
+            botAvatar.className = "avatar bot-avatar";
+            botAvatar.alt = "Bot";
+            let botMessage = document.createElement("div");
+            botMessage.className = "message bot-message";
+            botMessage.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+            messageContainer.appendChild(botAvatar);
+            messageContainer.appendChild(botMessage);
+            chatbox.appendChild(messageContainer);
+            scrollToBottom();
+            return messageContainer;
+        }		
+		function removeTypingIndicator() {
+			enableInputGroup();
+			
+			const element = document.getElementById("wait-message");
+			element.remove();
+		}
+		
+		function addWaitIndicator() {
+			disableInputGroup();		
+		
+            const chatbox = document.getElementById("chatbox");
+            let messageContainer = document.createElement("div");
+			messageContainer.id = "wait-response";
+            messageContainer.className = "wait-indicator";
+            let botAvatar = document.createElement("img");
+            botAvatar.src = "icons/bot.png";
+            botAvatar.className = "avatar bot-avatar";
+            botAvatar.alt = "Bot";
+            let botMessage = document.createElement("div");
+            botMessage.className = "message bot-message";
+            botMessage.innerHTML = '<div class="spinner"></div>';
+            messageContainer.appendChild(botAvatar);
+            messageContainer.appendChild(botMessage);
+            chatbox.appendChild(messageContainer);
+            scrollToBottom();
+            return messageContainer;
+        }		
+		function removeWaitIndicator() {
+			enableInputGroup();
+			
+			const element = document.getElementById("wait-response");
+			element.remove();
+		}
+		
+		function disableInputGroup() {
+			const inputGroup = document.getElementById("textgroup");
+			inputGroup.classList.add("disableInput");
+		}
+		function enableInputGroup() {
+			const inputGroup = document.getElementById("textgroup");
+			inputGroup.classList.remove("disableInput");
+		}
+
+        function addBotMessage(messageKey, extraText="", options = []) {
+		
+			let text = translateText(messageKey);
+			if(extraText.length > 0){
+				text += extraText;
+			}
+		
+            const chatbox = document.getElementById("chatbox");
+            let messageContainer = document.createElement("div");
+            messageContainer.className = "message-container";
+            let botAvatar = document.createElement("img");
+            botAvatar.src = "icons/bot.png";
+            botAvatar.className = "avatar bot-avatar";
+            botAvatar.alt = "Bot";
+			
+            let botMessage = document.createElement("div");
+            botMessage.className = "message bot-message";
+            //botMessage.innerText = text;
+			botMessage.innerHTML = marked.parse(text);
+            if (options.length > 0) {			
+                let optionsDiv = document.createElement("div");
+                optionsDiv.className = "mt-2";
+                options.forEach(option => {
+                    let button = document.createElement("button");
+                    button.className = "btn m-1";
+                    button.style.backgroundColor = "white";
+                    button.style.border = "1px solid #008080";
+                    button.style.color = "#008080";
+                    button.innerText = translateText(option.text);
+                    //button.onclick = () => handleResponse(option.response);
+					button.onclick = () => handleResponse(option.response, optionsDiv);
+                    optionsDiv.appendChild(button);
+                });
+                botMessage.appendChild(optionsDiv);
+				
+				disableInputGroup();
+            }
+			
+            messageContainer.appendChild(botAvatar);
+            messageContainer.appendChild(botMessage);
+            chatbox.appendChild(messageContainer);
+            scrollToBottom();
+        }
+		
+		function addBotTranslatedMessage(text, options = []) {
+			(async () => {
+				const translatedText = await translateText(text, currentLang);
+
+				const chatbox = document.getElementById("chatbox");
+				let messageContainer = document.createElement("div");
+				messageContainer.className = "message-container";
+
+				let botAvatar = document.createElement("img");
+				botAvatar.src = "icons/bot.png";
+				botAvatar.className = "avatar bot-avatar";
+				botAvatar.alt = "Bot";
+
+				let botMessage = document.createElement("div");
+				botMessage.className = "message bot-message";
+				//botMessage.innerText = translatedText;
+				botMessage.innerHTML = marked.parse(translatedText);
+
+				if (options.length > 0) {
+					let optionsDiv = document.createElement("div");
+					optionsDiv.className = "mt-2";
+
+					for (let opt of options) {
+						let translated = await translateText(opt.text, currentLang);
+						let button = document.createElement("button");
+						button.className = "btn m-1";
+						button.style.backgroundColor = "white";
+						button.style.border = "1px solid #008080";
+						button.style.color = "#008080";
+						button.innerText = translated;
+						button.onclick = () => handleResponse(opt.response, optionsDiv);
+						optionsDiv.appendChild(button);
+					}
+
+					botMessage.appendChild(optionsDiv);
+				}
+
+				messageContainer.appendChild(botAvatar);
+				messageContainer.appendChild(botMessage);
+				chatbox.appendChild(messageContainer);
+				scrollToBottom();
+			})();
+		}
+		
+		function displayBotAudio(audioURL) {
+			if(audioURL === null || audioURL === undefined || audioURL.length === 0){
+				return;
+			}
+			
+			audioURL = audioURL.replace("/var/www/html","");
+		
+			const chatbox = document.getElementById("chatbox");
+            let messageContainer = document.createElement("div");
+            messageContainer.className = "message-container";
+            let botAvatar = document.createElement("img");
+            botAvatar.src = "icons/bot.png";
+            botAvatar.className = "avatar bot-avatar";
+            botAvatar.alt = "Bot";
+			
+			var botAudio      = document.createElement('audio');
+			botAudio.id       = 'bot-audio-player';
+			botAudio.controls = 'controls';
+			botAudio.controlsList="nodownload";
+			botAudio.src      = audioURL +"?ts="+ Date.now();
+			botAudio.type     = 'audio/mpeg';
+			
+            messageContainer.appendChild(botAvatar);
+            messageContainer.appendChild(botAudio);
+            chatbox.appendChild(messageContainer);
+            scrollToBottom();			
+		}
+		
+		let botButtonsGroup;
+		function handleResponse(response, buttonGroup) {
+			if(buttonGroup){
+				let buttons = buttonGroup.querySelectorAll("button");
+				if(response === "capture-photo" || response === "upload-image") {
+					botButtonsGroup = buttons;				
+				}else{				
+					buttons.forEach(button => button.onclick = null);
+				}
+			}
+			
+			if(response === "confirm-assetid") {
+				addUserMessage("yes", true);
+				setTimeout(() => {
+					getAssetSummary(activeInstanceId);
+				}, 500);
+			
+			}else if(response === "reject-assetid") {
+				addUserMessage("no", true);
+				activeInstanceId = null;
+				addBotMessage("missing_asset_id");
+			
+			}else if(response === "chat-history") {
+				addUserMessage("chat_history", true);
+				addBotMessage("help_further");
+			
+			}else if(response === "chat-errorcode") {
+				addUserMessage("chat_errorcode", true);
+				activeSpn = spnfmiCodes[0].spn;
+				activeFmi = spnfmiCodes[0].fmi;
+				addBotMessage("help_further");
+			
+			}else if(response === "upload-error") {
+				addUserMessage("upload_error_image", true);
+				setTimeout(() => {
+					addBotMessage("prompt_upload_image", "", [
+						{ text: "capture_photo", response: "capture-photo" },
+						{ text: "upload_image", response: "upload-image" }
+					]);
+				}, 500);
+			
+			}else if(response === "capture-photo"){
+				handleCapturePhoto();
+			
+			}else if(response === "upload-image") {
+				handleUploadImage();
+			
+			}else if(response === "sop-document"){
+				addUserMessage("go_to_sop", true);
+				moveSOP = true;
+				activeSpn = spnfmiCodes[0].spn;
+				activeFmi = spnfmiCodes[0].fmi;
+				addBotMessage("fetching_details", ` SPN: ${activeSpn} FMI: ${activeFmi}`);
+				
+				const descriptionMsg = "ask_description";
+				handleSPNFMI(translateText(descriptionMsg));
+				
+			}else if(response === "enter-spn") {
+				enableInputGroup();
+				activeSpn = "0";
+				setTimeout(() => {
+					addBotMessage("provide_spn");
+				}, 500);	
+			
+			}else if(response === "yes-spnfmi") {
+				addUserMessage("yes", true);
+				addBotMessage("fetch_summary");
+				
+				const summaryMsg = "Summary";
+				handleSPNFMI(translateText(summaryMsg));
+			
+			}else if(response === "no-spnfmi") {
+				addUserMessage("no");
+				setTimeout(() => {
+					addBotMessage("ask_spn_fmi");
+				}, 500);
+			
+			}else if(response === "yes-info") {
+				addUserMessage("yes", true);
+				addBotMessage("Great! How I can help you further ?");
+			
+			}else if(response === "no-info") {
+				addUserMessage("no", true);
+			
+			}else{
+				if(activeSpn === null && activeFmi === null){
+					handleUserResponse(response);	
+					
+				}else {
+					if(activeSpn === "0" && activeFmi === null){
+						extractSPNFMI(response, "spn");			
+					}else if(activeSpn !== null && activeFmi === "0"){
+						extractSPNFMI(response, "fmi");			
+					}else {
+						if(moveSOP){
+							handleSPNFMI(response);
+						}else{
+							handleSPNFMI(response, "errorcode");
+						}
+							
+					}						
+				}							
+			}            
+        }		
+		
+		function getAssetSummary(assetid){
+			addBotMessage("fetch_summary_asset", `: ${assetid}`);
+			
+			const summaryMsg = "summary_instruction";
+			handleResponse(translateText(summaryMsg));
+		}
+
+        function handleCapturePhoto() {
+			//console.info('operation: handleCapturePhoto');
+			document.getElementById('photoFile').value = "";
+			document.getElementById('photoFile').click();
+		}
+		document.getElementById('photoFile').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+					addUserImage(file.name, e.target.result);
+					
+					sendUserImage(file);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+		
+		function handleUploadImage() {
+			//console.info('operation: handleUploadImage');
+			document.getElementById('imageFile').value = "";
+			document.getElementById('imageFile').click();
+		}
+		document.getElementById('imageFile').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+					addUserImage(file.name, e.target.result);
+					
+					sendUserImage(file);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+		
+		async function sendUserImage(file) {
+			userAssetOCR(file);			
+		}
+
+		function getLocalizedSummaryText(currentLang) {
+  			const summaryTranslations = {
+    				hi: "सारांश दें",        // Hindi
+    				ta: "சுருக்கமாகக் கொடு", // Tamil
+    				mr: "सारांश द्या",       // Marathi
+    				en: "Give summary",      // English
+    				"": "Give summary"       // Empty fallback to English
+  			};
+
+  			return summaryTranslations[currentLang] || "Give summary";
+		}	
+
+		async function userAssetOCR(file) {
+			showTypingIndicator();
+			
+			const summaryText = translateText("give_summary");			
+			const formData = new FormData();
+			formData.append('file', file);
+			formData.append('user_message', summaryText);
+			formData.append('language', currentLang);	
+			
+			try {
+				const chaturl = '/genmate/ocr/asset';
+				const chatparam = {
+									method: 'POST',
+									body: formData
+								};			
+				streamBotMessage(chaturl, chatparam, "ocr-asset");
+					
+			} catch (error) {
+				console.error('Error:', error);
+				addBotMessage("image_error");
+				addBotMessage("help_intro");
+				removeTypingIndicator();
+			}						
+		}
+
+		async function userCodeOCR(userMessage, chat="") {
+			showTypingIndicator();
+			
+			const formData = new FormData();
+			formData.append('user_message', userMessage);
+			//formData.append('file', file);
+			formData.append('spn', activeSpn);
+			formData.append('fmi', activeFmi);
+			formData.append('language', currentLang);			
+			
+			try {
+				const chaturl = '/genmate/ocr/asset';
+				const chatparam = {
+									method: 'POST',
+									body: formData
+								};		
+				if(chat && chat.length > 0){
+					streamBotMessage(chaturl, chatparam, "ocr-asset-chat");
+				}else{
+					streamBotMessage(chaturl, chatparam, "ocr-asset");
+				}
+					
+			} catch (error) {
+				console.error('Error:', error);
+				addBotMessage("image_error");
+				addBotMessage("help_intro");
+				removeTypingIndicator();
+				
+			}finally {
+				spnfmiCodes = [];
+				spnfmiCodes.push({spn:parseInt(activeSpn), fmi:parseInt(activeFmi)});
+				activeSpn = activeFmi = null;
+			}			
+		}		
+		
+		async function handleUserResponse(message) {
+			if(message.trim().length === 0){
+				addBotMessage("try_again");
+				
+			}else{							
+				try {
+					showTypingIndicator();
+					const chaturl = '/genmate/asset/chat';					
+					const chatparam = {
+										method: 'POST',
+										headers: {
+											'Content-Type': 'application/json'
+										},
+										body: JSON.stringify({
+											message: message,
+											context: {
+												instance_id: activeInstanceId
+											},
+											language: currentLang
+										})
+									};			
+					streamBotMessage(chaturl, chatparam, "asset-chat");
+					
+				} catch (error) {
+					console.error('Error:', error);
+					addBotMessage("msg_error");
+					addBotMessage("help_intro");
+					
+					removeTypingIndicator();
+				}
+			}
+		}
+		
+		let typingBuffer = '';
+		let isTyping = false;
+		
+		async function streamBotMessage(apiurl, apiparam, type) {
+			const chatbox = document.getElementById("chatbox");
+			const messageContainer = document.createElement("div");
+			messageContainer.className = "message-container";
+			messageContainer.style.visibility = 'hidden';
+
+			const botAvatar = document.createElement("img");
+			botAvatar.src = "icons/bot.png";
+			botAvatar.className = "avatar bot-avatar";
+			botAvatar.alt = "Bot";
+
+			const botMessage = document.createElement("div");
+			botMessage.className = "message bot-message";
+			botMessage.innerHTML = ""; // Will stream into this
+
+			messageContainer.appendChild(botAvatar);
+			messageContainer.appendChild(botMessage);
+			//chatbox.appendChild(messageContainer);
+			
+			try {
+				// Start fetch and stream
+				const response = await fetch(apiurl, apiparam);			
+				await handleNDJSONStream(response, (json) => {			
+					//console.info(type, "%%%%%%%%%%%%%%%", json);
+					
+					if(json.hasOwnProperty('chunk')){
+						//console.timeLog(type);
+						if(typingBuffer === '')	{
+							removeTypingIndicator();
+							
+							chatbox.appendChild(messageContainer);
+							messageContainer.style.visibility = 'visible';	
+							addWaitIndicator();						
+						}
+					
+						//botMessage.innerHTML += json['chunk']; 	// or json.chunk.replace("\n", "<br>")
+						typingBuffer += json['chunk'];
+						typeMarkdownLiveByWord(botMessage);
+						
+					}else {	
+						if(json['status'] === "streaming"){
+							//console.time(type);
+							typingBuffer = '';
+							isTyping = false;
+							if(type === "ocr-asset") {						
+								if(json.hasOwnProperty("spn") && json.hasOwnProperty("fmi")){
+									spnfmiCodes = [];
+									spnfmiCodes.push({spn:parseInt(json.spn), fmi:parseInt(json.fmi)});
+									
+									const codeData = `SPN: ${json.spn}
+													 FMI: ${json.fmi}`;					
+									addBotMessage(codeData);
+								}						
+							}
+						
+						}else if(json['status'] === "complete"){
+							removeWaitIndicator();
+							//console.timeEnd(type);
+							if(json.hasOwnProperty("audio_url")){
+								displayBotAudio(json['audio_url']);
+							}
+							
+							if(type === "asset-chat"){
+								if(spnfmiCodes.length > 0){
+									addBotMessage("ask_action", "", [
+										{ text: "chat_history", response: "chat-history" },
+										{ text: "go_to_sop", response: "sop-document" }
+									]);
+								}else{
+									addBotMessage("ask_action", "", [
+										{ text: "chat_history", response: "chat-history" },
+										{ text: "upload_error_image", response: "upload-error" }
+									]);
+								}									
+								
+							}else if(type.indexOf("ocr-asset") === 0) {
+								setTimeout(() => {
+									addBotMessage("ask_action", "", [
+										{ text: "chat_errorcode", response: "chat-errorcode" },
+										{ text: "go_to_sop", response: "sop-document" }
+									]);
+								}, 500);
+								
+							}else if(type === "code-chat"){								
+								stepcount += 1;
+							}
+							
+							if(json.hasOwnProperty("session") && json["session"] === "close"){
+								disableInputGroup();
+							}
+							
+						}else{	
+							removeTypingIndicator();
+							if(json['status'] === "error") {
+								const errormsg = `${json.message}`;
+								addBotMessage(errormsg);
+								
+								if(type === "asset-chat") {
+									activeInstanceId = null;
+									addBotMessage("invalid_asset_id");
+									
+								}else if(type.indexOf("ocr-asset") === 0) {
+									setTimeout(() => {
+										addBotMessage("provide_error_info", "", [
+											{ text: "capture_photo", response: "capture-photo" },
+											{ text: "upload_image", response: "upload-image" },
+											{ text: "enter_spn_fmi", response: "enter-spn" }
+										]);
+									}, 500);
+									
+								}else if(type === "code-chat"){								
+									//addBotMessage(`SPN: ${activeSpn} FMI: ${activeFmi} is not available with us, Please validate the input.`);
+
+								}
+							}
+							
+							if(type === "asset-chat") {
+								if(json['detail'] && json['detail'].indexOf("404") > -1) {
+									activeInstanceId = null;
+									//addBotMessage(json['detail']);
+									addBotMessage("invalid_asset_id");
+								}
+							}						
+													
+						}
+					}
+					
+					scrollToBottom();				
+				 });
+			 
+			 } catch (error) {
+				console.error('Error:', error);
+				addBotMessage("msg_error");
+				addBotMessage("help_intro");
+				removeTypingIndicator();
+			}
+		}
+
+		/*function typeMarkdownLiveByWord(element) {
+		  if (isTyping) return;
+		  isTyping = true;
+
+		  let wordIndex = 0;
+
+		  function getDelay(progress) {
+			if (progress < 0.2) return 120; // Start slow
+			if (progress < 0.8) return 50;  // Speed up
+			return 30;                      // Fast at the end
+		  }
+
+		  function typeNext() {
+			const words = typingBuffer.match(/[^\s]+|\n/g) || [];
+			const totalWords = words.length;
+			
+			//console.info(wordIndex, totalWords, "%%%%%%%%%%%%%%%", element.innerText);
+			console.info(wordIndex, "%%%%%%%%%%%%%%%", totalWords);
+
+			if (wordIndex < totalWords) {
+			  const progress = wordIndex / totalWords;
+			  const delay = getDelay(progress);
+
+			  const visibleText = words.slice(0, wordIndex + 1).join(' ');
+			  const rawHTML = marked.parse(visibleText, { breaks: true });
+			  const safeHTML = DOMPurify.sanitize(rawHTML);
+			  element.innerHTML = safeHTML + '<span class="cursor">|</span>';
+			  scrollToBottom();
+
+			  wordIndex++;
+			  setTimeout(typeNext, delay);
+			} else {
+			  // Wait for more words from the stream
+			  setTimeout(() => {
+				const updatedWords = typingBuffer.match(/[^\s]+|\n/g) || [];
+				if (wordIndex < updatedWords.length) {
+				  typeNext();
+				  console.info("........... here 1 ..........");
+				} else {
+				  console.info("........... here 2 ,,,,,,,,,,,,,,,,", element.innerHTML);
+				  isTyping = false;
+				  element.innerHTML = element.innerHTML.replace(/<span class="cursor">\|<\/span>/, '');
+				  
+				}
+			  }, 100);
+			}
+		  }
+
+		  typeNext();
+		}*/
+		
+
+		function typeMarkdownLiveByWord(element) {
+		  if (isTyping) return;
+		  isTyping = true;
+
+		  let waitcount = 0;
+		  let wordIndex = 0;
+		  let lastTyped = '';
+
+		  function getDelay(progress) {
+			if (progress < 0.2) return 120;
+			if (progress < 0.8) return 60;
+			return 30;
+		  }
+
+		  function typeNext() {
+			waitcount = 0;
+			
+			const words = typingBuffer.match(/[^\s]+|\n/g) || [];
+			const totalWords = words.length;
+
+			if (wordIndex < totalWords) {
+			  const progress = wordIndex / totalWords;
+			  const delay = getDelay(progress);
+
+			  const visibleText = words.slice(0, wordIndex + 1).join(' ');
+			  //console.info("visibleText ..........", visibleText);
+			  // Only re-render if the visible text changed
+			  if (visibleText !== lastTyped) {
+				const rawHTML = marked.parse(visibleText, { breaks: true });
+				const safeHTML = DOMPurify.sanitize(rawHTML);
+				element.innerHTML = safeHTML;// + '<span class="cursor">|</span>';
+				lastTyped = visibleText;
+				scrollToBottom();
+			  }
+
+			  wordIndex++;
+			  setTimeout(typeNext, delay);
+			} else {
+			  let waitTimer = (currentLang.indexOf("en") === -1) ? 1000 : 300;
+			  // No new word yet — check again later
+			  let waitChunk = setInterval(() => {
+				const updatedWords = typingBuffer.match(/[^\s]+|\n/g) || [];
+				if (wordIndex < updatedWords.length) {
+					clearInterval(waitChunk);
+					typeNext(); // More words arrived, continue
+					console.info("........... here 1 ..........");
+				} else {
+					if(wordIndex < 5){
+						waitcount = 7;
+					}
+					waitcount += 1;
+					console.info(waitcount, ".... here 2 ,,,,", wordIndex, "%%%%%%", updatedWords.length);
+					if(waitcount === 8){
+						clearInterval(waitChunk);
+						isTyping = false;
+						element.innerHTML = element.innerHTML.replace(/<span class="cursor">\|<\/span>/, '');
+					}					
+				}
+			  }, waitTimer);
+			}
+		  }
+
+		  typeNext();
+		}
+
+		
+		async function handleSPNFMI(message, type="") {
+			const userinput = message.toLowerCase();
+			if(userinput.indexOf('spn') > -1 && userinput.indexOf('fmi') > -1){
+				extractSPNFMI(userinput);
+				
+			}else{
+				try {
+					if(type === "errorcode"){
+						userCodeOCR(message, type);
+						
+					}else{
+						showTypingIndicator();
+					
+						const chaturl = '/genmate/error-code/chat';
+						const chatparam = {
+											method: 'POST',
+											headers: {
+												'Content-Type': 'application/json'
+											},
+											body: JSON.stringify({
+												message: message,
+												context: {},
+												error_codes: spnfmiCodes,
+												language: currentLang,
+												response_count: stepcount
+											})
+										};			
+						streamBotMessage(chaturl, chatparam, "code-chat");
+						
+					}
+					
+				} catch (error) {
+					console.error('Error:', error);
+					addBotMessage("msg_error");
+					addBotMessage("help_intro");
+					removeTypingIndicator();
+				}
+			}	
+		}
+		
+		function extractSPNFMI(userInput, codetype="") {
+			let arrSPNFMI = (userInput.match(/\d+/g) || []).map(Number);
+			if(arrSPNFMI === null || arrSPNFMI.length == 0){
+				if(codetype !== ""){
+					if(codetype === "spn"){
+						addBotMessage("provide_spn");				
+					}else if(codetype === "fmi"){
+						addBotMessage("provide_fmi");				
+					}
+				}else{
+					if(!(arrSPNFMI.length % 2 == 0)){
+						addBotMessage("ask_spn_fmi");
+					}
+				}
+			}else{
+			
+				if(codetype === "spn"){
+					activeSpn = parseInt(arrSPNFMI[0]);	
+					activeFmi = "0";
+					setTimeout(() => {
+						addBotMessage("provide_fmi");
+					}, 500);					
+					
+					
+				}else if(codetype === "fmi"){
+					activeFmi = parseInt(arrSPNFMI[0]);
+					
+					const summaryText = translateText("give_summary");			
+					userCodeOCR(summaryText);					
+					
+				}else{
+				
+					spnfmiCodes = [];
+					let spnfmiObj;
+					for(var i=0; i< arrSPNFMI.length; i++) {					
+						if(i % 2 === 0){
+							spnfmiObj = {};
+							spnfmiObj['spn'] = arrSPNFMI[i];
+						}else {
+							spnfmiObj['fmi'] = arrSPNFMI[i];
+						}
+						if(spnfmiObj.hasOwnProperty('spn') && spnfmiObj.hasOwnProperty('fmi')){
+							spnfmiCodes.push(spnfmiObj);
+						}
+					}
+					
+					activeSpn = Array.prototype.map.call(spnfmiCodes, s => s.spn).toString();
+					activeFmi = Array.prototype.map.call(spnfmiCodes, s => s.fmi).toString();
+					const codeData = `SPN: ${activeSpn} 
+										FMI: ${activeFmi}`;					
+					addBotMessage(codeData);
+					
+					addBotMessage("fetching_summary");
+					const summaryMsg = "ask_description";
+					handleSPNFMI(translateText(summaryMsg));			
+				}				
+			}
+		}
+		
+		/**** handle response which stream as NDJSON ****/
+		async function handleNDJSONStream(response, onJSONChunk) {
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = '';
+
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+				const lines = buffer.split('\n');
+				buffer = lines.pop(); // save incomplete line
+
+				for (const line of lines) {
+				  if (line.trim()) {
+					try {
+						const json = JSON.parse(line);
+						onJSONChunk(json); // Call the callback with parsed JSON
+					} catch (e) {
+						console.warn('Null invalid:', line);
+						addBotMessage(`Error: ${e}`);
+						addBotMessage("help_intro");
+					}
+				  }
+				}
+			}
+
+			// Handle any remaining chunk
+			if (buffer.trim()) {
+				try {
+					const json = JSON.parse(buffer);
+					onJSONChunk(json);
+				} catch (e) {
+					console.warn('Final chunk invalid:', buffer);
+					addBotMessage(`Error: ${e}`);
+					addBotMessage("help_intro");
+				}
+			}
+		}
+		
+		function translateText(key) {
+			return translations[currentLang]?.[key] || translations["en"][key] || key;
+		}
+		
+		function isIOS() {
+			const userAgent = navigator.userAgent;
+			const isIphoneIpadIpod = /iPhone|iPad|iPod/.test(userAgent);
+			const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent); // Checks for Safari and excludes Chrome
+			return isIphoneIpadIpod || isSafari && !window.MSStream;
+		}
+		
+		window.onload = init;
+		
+    </script>
+</body>
+</html>
