@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" style="overflow:hidden">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Range Slider</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Noto Sans, Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 5px 0 0;
+            color: #333;
+            font-size: 14px;
+        }
+        p {
+            margin: 0;
+        }        
+        .container {
+            width: 100%;
+            margin: auto;
+			padding: 0 10px;
+        }
+        .slider-container {
+            width: 90%;
+            max-width: 1080px;
+            margin: 0 auto 10px;
+        }
+
+    </style>
+    <link rel="stylesheet" href="css/rSlider.css">
+</head>
+<body>
+
+
+    <div class="container">
+        <div class="slider-container">
+            <input type="text" id="slider" class="slider" />
+        </div>
+    </div>
+    
+    <script src="js/rSlider.js"></script>
+    <script>
+        (function () {
+            'use strict';
+
+            var init = function () {
+			
+				var showMonths = true;
+				var showTooltip = false;
+				var initSet = ['Jun 2020', 'Jan 2021'];
+				var yearRange = [2020, 2025];
+				var monthRange = [];				
+				
+				//	?fromyear=2020&frommonth=Feb&toyear=2023&tomonth=Jan&initval=Jun%202020,Jan%202021&tooltip=yes
+				const appURL = window.location.href;
+				let paramString = appURL.split('?')[1];
+				let queryString = new URLSearchParams(paramString);
+				for(let pair of queryString.entries()) {
+					if(pair[0] === "fromyear") {
+						const fromyearVal = pair[1];
+						yearRange[0] = parseInt(fromyearVal);
+					}else if(pair[0] === "toyear") {
+						const toyearVal = pair[1];
+						yearRange[1] = parseInt(toyearVal);
+					}else if(pair[0] === "frommonth") {
+						const fromMonthVal = pair[1];
+						monthRange[0] = fromMonthVal;
+					}else if(pair[0] === "tomonth") {
+						const toMonthVal = pair[1];
+						monthRange[1] = toMonthVal;
+					}else if(pair[0] === "initval") {
+						const initval = pair[1];
+						initSet = initval.split(',');
+					}else if(pair[0] === "tooltip") {
+						showTooltip = (pair[1] === 'yes') ? true : false;
+					}/*else if(pair[0] === "months") {
+						showMonths = (pair[1] === 'yes') ? true : false;
+					}*/		
+				}
+				
+				if(showTooltip){
+					document.body.style['padding-top'] = "20px";
+				}				
+				
+				var arrMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+				
+				var arrVal = [];
+				for(var i=yearRange[0]; i<= yearRange[1]; i++){	
+					if(showMonths){
+						for(var j=0; j< arrMonths.length; j++){
+							const month = arrMonths[j] +" "+i;
+							arrVal.push(month);
+						}	
+					}else{
+						arrVal.push(i);
+					}					
+				}
+				
+				if(showMonths && monthRange.length > 0){
+					let startMonthIndex = -1;
+					if(monthRange[0] && yearRange[0]){
+						startMonthIndex = arrVal.indexOf(monthRange[0] +" "+ yearRange[0]);
+					}
+					
+					let endMonthIndex = -1;
+					if(monthRange[1] && yearRange[1]){
+						endMonthIndex = arrVal.lastIndexOf(monthRange[1] +" "+ yearRange[1]);
+					}
+					
+					if(startMonthIndex > -1 && endMonthIndex > -1){
+						arrVal = arrVal.slice(startMonthIndex, endMonthIndex+1);
+					}			
+				}
+
+                var slider = new rSlider({
+                    target: '#slider',
+                    values: arrVal,
+                    range: true,
+					tooltip: showTooltip,
+					scale: true,
+					labels: true,
+                    set: initSet,
+                    onChange: function (vals) {
+                        //console.log(vals);
+						window.parent.postMessage({
+							'func': 'setSliderValue',
+							'value': vals
+						}, window.location.origin);
+						
+                    }
+                });
+            };
+            window.onload = init;
+			
+			
+
+        })();
+    </script>
+</body>
+</html>

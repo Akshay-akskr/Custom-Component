@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tabular</title>
+  <style>
+    body {
+	  font-family: Noto Sans, Arial, sans-serif;
+	  margin: 2px;
+	  background-color: #fff;
+	  color: #000;
+	}
+
+	.table-container {
+	  overflow-x: auto;
+	}
+
+	table {
+	  width: 100%;
+	  border-collapse: collapse;	  
+	  background-color: #fff;
+	  border: 1px solid #79747E;
+	  margin: 2px 0;
+	}
+
+	th, td {
+	  text-align: center;
+	  padding: 10px;
+	  border: 1px solid #79747E;
+	  font-family: Noto Sans, Arial, sans-serif;
+	  font-size: inherit;
+	  font-weight: 400;
+	}
+
+	th {
+	  background-color: #fff;
+	  font-weight: 400;
+	}
+
+	td:first-child {
+	  text-align: left;
+	}
+
+	tr:nth-child(even) {background-color: #F0F9F8;}
+
+	input[type="radio"] {
+	  width: 24px;
+	  height: 24px;
+	  accent-color: grey;
+	}
+	
+	/* Initially hide the scrollbar */
+	body::-webkit-scrollbar {
+	  width: 6px;
+	  height: 6px;
+	  opacity: 0;
+	  transition: opacity 0.3s;
+	}
+
+	/* Show scrollbar on hover */
+	body:hover::-webkit-scrollbar {
+	  opacity: 1;
+	}
+
+	/* Scrollbar track */
+	body::-webkit-scrollbar-track {
+	  background: #f1f1f1;
+	  border-radius: 10px;
+	}
+
+	/* Scrollbar thumb */
+	body::-webkit-scrollbar-thumb {
+	  background: #b0b0b0;
+	  border-radius: 10px;
+	}
+
+	/* Scrollbar thumb on hover */
+	body::-webkit-scrollbar-thumb:hover {
+	  background: #555;
+	}
+
+  </style>
+</head>
+<body>
+  <div class="likert-table">
+    <form id="tabularForm">
+      <table id="likertTable">
+        <!-- Table will be dynamically generated here -->
+      </table>
+      <div id="result"></div>
+    </form>
+  </div>
+
+  <script>	
+	
+	(function () {
+		
+
+		var init = function () {
+		
+			adjustFontSize();
+			//?data={%22options%22:%5Bnull,null,null,null,%22Header%205%22,%22Header%206%22,%22Header%207%22,%22Header%208%22%5D,%22records%22:%5B{%22question%22:%22How%20many%20hours%20do%20you%20work%20per%20week%3F%22,%22scores%22:%5Bnull,null,null,null,%2221%22,%2222%22,%2223%22,%2224%22%5D},{%22question%22:%22What%20is%20your%20age%3F%22,%22scores%22:%5Bnull,null,null,null,%225%22,%226%22,%227%22,%228%22%5D},{%22question%22:%22What%20is%20your%20favorite%20color%3F%22,%22scores%22:%5Bnull,null,null,null,%2213%22,%2214%22,%2215%22,%2216%22%5D},{%22question%22:%22What%20is%20your%20preferred%20mode%20of%20transport%3F%22,%22scores%22:%5Bnull,null,null,null,%2229%22,%2230%22,%2231%22,%2232%22%5D}%5D}	
+			const appURL = window.location.href;
+			let paramString = appURL.split('?')[1];
+			let queryString = new URLSearchParams(paramString);
+			for(let pair of queryString.entries()) {
+				if(pair[0] === "data") {
+					let dataStr = pair[1];
+					console.log("data *************", dataStr);
+					dataStr = dataStr.replace(/\s+null/g, "null").replace(/null\s+/g, "null");
+					dataStr = dataStr.replaceAll('null,','');
+					dataStr = dataStr.replaceAll(',null','');
+					
+					setScaleView(JSON.parse(dataStr));
+				}	
+			}		
+		};
+		
+		function setScaleView(scaleData){
+			let arrResult = [];
+	
+			// Select the table
+			const table = document.getElementById('likertTable');
+
+			// Create the header row
+			const headerRow = document.createElement('tr');
+			const emptyHeader = document.createElement('th');
+			emptyHeader.textContent = ''; // Empty cell for alignment
+			headerRow.appendChild(emptyHeader);
+
+			scaleData.options.forEach(option => {
+				const th = document.createElement('th');
+				th.textContent = option;
+				headerRow.appendChild(th);
+			});
+			table.appendChild(headerRow);
+
+			// Create rows for each question
+			scaleData.records.forEach((record, qIndex) => {
+				const row = document.createElement('tr');
+
+				// Question cell
+				const questionCell = document.createElement('td');
+				questionCell.textContent = record.question;
+				questionCell.style.textAlign = 'left'; // Align question text to the left
+				row.appendChild(questionCell);
+
+				// Option cells with radio buttons
+				scaleData.options.forEach((option, oIndex) => {
+					const cell = document.createElement('td');
+
+					const input = document.createElement('input');
+					input.type = 'radio';
+					input.name = `q${qIndex + 1}`;
+					input.value = oIndex + 1;
+					input.label = option;
+					input.value = record.scores[oIndex];
+					input['subQid'] = (record['subquesid']) ? record['subquesid'] : (qIndex + 1);
+					if(record.selectedoption && input.value === record.selectedoption){
+						input.checked = true;
+					}
+
+					cell.appendChild(input);		
+					row.appendChild(cell);
+				});
+
+				table.appendChild(row);
+
+				let elemStr = 'input[name=q'+(qIndex + 1)+']';
+				const radioButtons = document.querySelectorAll(elemStr);
+				if(radioButtons && radioButtons.length > 0){
+					for(radio in radioButtons) {
+						radioButtons[radio].onclick = function(e) {
+							arrResult[qIndex] = {label:this.label, value:this.value};
+				
+							/*let score = 0;
+							for(let i=0; i<arrResult.length; i++){
+								if(arrResult[i]){
+									score = score + parseFloat(arrResult[i].value);
+								}
+							}
+							console.log("score .........", score);*/
+							
+							const score = this.value;
+							const subQid = this.subQid;
+							console.log(subQid, ".........", score);
+							
+							window.parent.postMessage({
+								'func': 'getComponentValue',
+								'key': '__REPORTMATRIXSCORE__',
+								'value': score,
+								'key1': '__SUBQUESTIONID__',
+								'value1': subQid
+							}, window.location.origin);
+						}
+					}
+				}
+			});		
+		}		
+		
+		function adjustFontSize() {
+		  const browserWidth = window.top.innerWidth; // Gets browser width
+		  const browserHeight = window.top.innerHeight; // Gets browser height
+		  
+		  let fontSize;
+
+		  if (browserWidth < 1024 || browserHeight < 600) {
+			fontSize = "12px";
+		  } else {
+			fontSize = "14px";
+		  }
+
+		  document.body.style.fontSize = fontSize;
+		}
+		
+		
+		window.onload = init;
+		window.onresize = adjustFontSize;
+    })();
+	
+  </script>
+</body>
+</html>

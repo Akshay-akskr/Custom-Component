@@ -1,0 +1,189 @@
+.rs-container * {
+    box-sizing: border-box;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+.rs-container {
+    font-family: Noto Sans, Arial, Helvetica, sans-serif;
+    height: 35px;
+    position: relative;
+}
+.rs-container .rs-bg, .rs-container .rs-selected {
+    background-color: #f6f6ff;
+    border: 1px solid #f6f6ff;
+    height: 26px;
+    left: 0;
+    position: absolute;
+    top: 5px;
+    width: 100%;
+    border-radius: 3px;
+}
+.rs-container .rs-selected {
+    background-color: #c6c6dc;
+    border: 1px solid #c6c6dc;
+    transition: all 0.2s linear;
+    width: 0;
+}
+.rs-container.disabled .rs-selected {
+    background-color: #ccc;
+    border-color: #bbb;
+}
+.rs-container .rs-pointerX {
+    background-color: #fff;
+    border: 1px solid #bbb;
+    border-radius: 50%;
+    cursor: pointer;
+    height: 24px;
+    left: -10px;
+    position: absolute;
+    top: 0px;
+    transition: all 0.2s linear;
+    width: 24px;
+    box-shadow: inset 0 0 1px #FFF, inset 0 1px 6px #ebebeb, 1px 1px 4px rgba(0, 0, 0, 0.1);	
+}
+.rs-container .rs-pointer {
+	cursor: pointer;
+    background-color: #fff;
+	position: absolute;
+    left: 0px;    
+    top: 0px;
+    transition: all 0.2s linear;
+	
+	/* triangle shape */
+	border: 12px solid #69698c;
+    border-radius: 4px;
+	border-top: 0 solid #69698c;
+	width: 0; height: 0;
+	background: transparent;
+	border-top-width: 15px;
+	border-left-color: transparent;
+	border-right-color: transparent;
+	border-bottom-color: transparent;	
+}
+.rs-container.disabled .rs-pointer {
+    border-color: #ccc;
+}
+.rs-container .rs-pointer::before,
+.rs-container .rs-pointer::after {
+    content: '';
+    position: absolute;
+    width: 0px;
+    height: 9px;
+    background-color: #ddd;
+    left: 1px;
+    top: 5px;
+}
+.rs-container .rs-pointer::after {
+    left: auto;
+    right: 12px;
+}
+.rs-container.disabled .rs-pointer {
+    cursor: default;
+}
+.rs-container.sliding .rs-selected,
+.rs-container.sliding .rs-pointer {
+    transition: none;
+}
+.rs-container .rs-scale {
+    left: 0;
+    position: absolute;
+    top: 5px;
+    white-space: nowrap;
+}
+.rs-container .rs-scale span {
+    float: left;
+    position: relative;
+	background: linear-gradient(90deg, #ededed 1px, rgb(196 53 53 / 0%));
+	height: 26px;
+}
+ .rs-container .rs-scale span::before {
+    background-color: #ededed;
+    content: "";
+    height: 26px;    
+    position: absolute;
+    top: 0px;
+	width: 0px;
+}
+.rs-container.rs-noscale span::before {
+    display: none;
+}
+.rs-container.rs-noscale span:first-child::before,
+.rs-container.rs-noscale span:last-child::before {
+    display: block;
+}
+.rs-container .rs-scale span:last-child {
+    margin-left: -1px;
+    width: 0px;
+}
+.rs-container .rs-scale span ins {
+    color: #333;
+    display: inline-block;
+    font-size: 12px;
+    margin-top: 28px;
+    text-decoration: none;
+}
+.rs-container.disabled .rs-scale span ins {
+    color: #999;
+}
+.rs-tooltip {
+    color: #333;
+    width: auto;
+    min-width: 60px;
+    height: 16px;
+	position: relative;
+	background: rgba(255,255,255,0);
+	border: 0px solid #69698c;
+    border-radius: 3px;
+    position: absolute;
+    transform: translate(-50%, -35px);
+    left: 0px;
+    text-align: center;
+    font-size: 12px;
+    padding: 2px 0;
+	white-space: nowrap;
+	top: 4px
+}
+.rs-container.disabled .rs-tooltip {
+    border-color: #ccc;
+    color: #999;
+}
+.rs-tooltipL {
+    color: #333;
+    width: auto;
+    min-width: 60px;
+    height: 16px;
+	position: relative;
+	background: rgba(255,255,255,0);
+	border: 0px solid #69698c;
+    border-radius: 3px;
+    position: absolute;
+    transform: translate(-50%, -35px);
+    left: -32px;
+    text-align: right;
+    font-size: 12px;
+    padding: 2px 0;
+	white-space: nowrap;
+	top: 4px
+}
+.rs-tooltipR {
+    color: #333;
+    width: auto;
+    min-width: 60px;
+    height: 16px;
+	position: relative;
+	background: rgba(255,255,255,0);
+	border: 0px solid #69698c;
+    border-radius: 3px;
+    position: absolute;
+    transform: translate(-50%, -35px);
+    left: 32px;
+    text-align: left;
+    font-size: 12px;
+    padding: 2px 0;
+	white-space: nowrap;
+	top: 4px
+}

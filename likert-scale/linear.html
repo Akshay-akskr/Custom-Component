@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linear</title>
+  <style>
+    body {
+	  font-family: Noto Sans, Arial, sans-serif;
+	  margin: 2px;
+	  background-color: #fff;
+	  color: #000;
+	}
+
+	.likert-scale {
+	  background: #fff;
+	  margin: 0 auto;  
+	  padding: 0px;
+	}
+
+	.question {
+	  margin: 0px;
+	  margin-bottom: auto;
+	}
+
+	.question p {
+	  font-size: 16px;
+	  font-weight: 600;
+	  color : #2B2B2B;
+	  margin: 0;
+	  margin-bottom: 20px;
+	}
+
+	.options {
+	  display: flex;
+	  justify-content: space-between;
+	  align-items: center;
+	  position: relative;
+	}
+
+	label {
+	  text-align: center;
+	  flex: 1;
+	  position: relative;
+	  height: 75px;
+	}
+
+	input[type="radio"] {
+	  position: absolute;
+	  width: 24px;
+	  height: 24px;
+	  top: -6px;
+	  left: 50%;
+	  transform: translateX(-50%);
+	  cursor: pointer;
+	  accent-color: grey;
+	}
+
+	.line {
+	  display: block;
+	  height: 4px;
+	  background: #ddd;
+	  margin: 8px 0;
+	}
+	.linefirst {
+	  width: 50%;
+	  position: relative;
+	  left: 50%;
+	}
+	.linelast {
+	  width: 50%;
+	}
+
+	label span:last-child {
+	  font-size: 16px;
+	  font-weight: 400;
+	  color : #2B2B2B;
+	  width: 100%;
+	  margin: 16px 2px 0px;
+	  word-wrap: break-word;
+	  display: -webkit-box;
+	  -webkit-line-clamp: 2;
+	  -webkit-box-orient: vertical;
+	  overflow: hidden;
+	  text-overflow: ellipsis;
+	}
+	
+	/* Initially hide the scrollbar */
+	body::-webkit-scrollbar {
+	  width: 6px;
+	  height: 6px;
+	  opacity: 0;
+	  transition: opacity 0.3s;
+	}
+
+	/* Show scrollbar on hover */
+	body:hover::-webkit-scrollbar {
+	  opacity: 1;
+	}
+
+	/* Scrollbar track */
+	body::-webkit-scrollbar-track {
+	  background: #f1f1f1;
+	  border-radius: 10px;
+	}
+
+	/* Scrollbar thumb */
+	body::-webkit-scrollbar-thumb {
+	  background: #b0b0b0;
+	  border-radius: 10px;
+	}
+
+	/* Scrollbar thumb on hover */
+	body::-webkit-scrollbar-thumb:hover {
+	  background: #555;
+	}	
+	
+	@media screen and (max-height: 600px) {
+	  th, td {
+		font-size: 12px;
+	  }
+	}
+
+  </style>
+</head>
+<body>
+  <div class="likert-scale">
+    <form id="linearForm">
+      <!-- Questions and options will be dynamically generated here -->
+    </form>
+	<div id="result"></div>
+  </div>
+
+  <script>
+	
+	(function () {
+
+		var init = function () {
+		
+			adjustFontSize();
+			
+			//data={%22options%22:[%22Header1%22,%22Header2%22,%22Header3%22],%22records%22:%5B{%22question%22:%22Option1%22,%22scores%22:%5B%221%22,%221%22,%221%22%5D,%22subquesid%22:1,%22selectedoption%22:null},{%22question%22:%22Option2%22,%22scores%22:%5B%222%22,%222%22,%222%22%5D,%22subquesid%22:2,%22selectedoption%22:null},{%22question%22:%22Option3%22,%22scores%22:%5B%223%22,%223%22,%223%22%5D,%22subquesid%22:3,%22selectedoption%22:null},{%22question%22:%22Option4%22,%22scores%22:%5B%224%22,%224%22,%224%22%5D,%22subquesid%22:4,%22selectedoption%22:null}%5D}
+			const appURL = window.location.href;
+			let paramString = appURL.split('?')[1];
+			let queryString = new URLSearchParams(paramString);
+			for(let pair of queryString.entries()) {
+				if(pair[0] === "data") {
+					let dataStr = pair[1];				
+					// Use regex to remove spaces around "null"
+					dataStr = dataStr.replace(/\s+null/g, "null").replace(/null\s+/g, "null");
+					dataStr = dataStr.replaceAll('null,','');
+					dataStr = dataStr.replaceAll(',null','');
+					
+					setScaleView(JSON.parse(dataStr));
+				}	
+			}
+		};
+		
+		function setScaleView(scaleData){
+			console.info("data *************", scaleData);	
+			let arrResult = [];
+	
+			// Select the form
+			const form = document.getElementById('linearForm');
+
+			// Generate survey questions and options
+			scaleData.records.forEach((record, qIndex) => {
+				// Create question container
+				const questionDiv = document.createElement('div');
+				questionDiv.classList.add('question');
+
+				// Create question text
+				const questionText = document.createElement('p');
+				questionText.textContent = `${qIndex + 1}. ${record.question}`;
+				questionDiv.appendChild(questionText);
+
+				// Create options container
+				const optionsDiv = document.createElement('div');
+				optionsDiv.classList.add('options');
+
+				// Create radio button options
+				scaleData.options.forEach((option, oIndex) => {
+					const label = document.createElement('label');
+
+					const input = document.createElement('input');
+					input.type = 'radio';
+					input.label = option;
+					input.name = `q${qIndex + 1}`;
+					input.value = record.scores[oIndex];
+					input['subQid'] = (record['subquesid']) ? record['subquesid'] : (qIndex + 1);
+					if(record.selectedoption && input.value === record.selectedoption){
+						input.checked = true;
+					}				
+
+					const lineSpan = document.createElement('span');
+					lineSpan.classList.add('line');
+					if(oIndex === 0){
+						lineSpan.classList.add('linefirst');
+					}else if(oIndex === record.scores.length-1){
+						lineSpan.classList.add('linelast');						
+						//questionDiv.style.marginBottom = 0;
+					}
+
+					const span = document.createElement('span');
+					span.id = `q${qIndex + 1}` +"-"+ option;
+					span.textContent = option;
+
+					label.appendChild(lineSpan);
+					label.appendChild(input);
+					label.appendChild(span);
+					optionsDiv.appendChild(label);
+				});
+
+				questionDiv.appendChild(optionsDiv);
+				form.appendChild(questionDiv);
+
+				let elemStr = 'input[name=q'+(qIndex + 1)+']';
+				const radioButtons = document.querySelectorAll(elemStr);
+				if(radioButtons && radioButtons.length > 0){
+					for(radio in radioButtons) {
+						radioButtons[radio].onclick = function(e) {
+							let allLabels = document.querySelectorAll('span');
+							allLabels.forEach(elem => elem.style.fontWeight = 400);
+				
+							arrResult[qIndex] = {label:this.label, value:this.value};
+				
+							/*let score = 0;
+							for(let i=0; i<arrResult.length; i++){
+								if(arrResult[i]){
+									score = score + parseFloat(arrResult[i].value);
+									
+									let spanId = 'q'+(i + 1)+'-'+arrResult[i].label;
+									let radioLabel = document.getElementById(spanId);
+									radioLabel.style.fontWeight = 700;
+								}
+							}
+							console.log("score.........", score);*/
+							
+							const score = this.value;
+							const subQid = this.subQid;
+							console.log(subQid, ".........", score);
+							
+							window.parent.postMessage({
+								'func': 'getComponentValue',
+								'key': '__REPORTMATRIXSCORE__',
+								'value': score,
+								'key1': '__SUBQUESTIONID__',
+								'value1': subQid
+							}, window.location.origin);
+						}
+					}
+				}
+			});		
+		}		
+		
+		function adjustFontSize() {
+		  const browserWidth = window.top.innerWidth; // Gets browser width
+		  const browserHeight = window.top.innerHeight; // Gets browser height
+		  
+		  let fontSize;
+
+		  if (browserWidth < 1024 || browserHeight < 600) {
+			fontSize = "12px";
+		  } else {
+			fontSize = "14px";
+		  }
+
+		  document.body.style.fontSize = fontSize;
+		}
+		
+		
+		window.onload = init;
+		window.onresize = adjustFontSize;		
+		
+    })();
+		
+  </script>
+</body>
+</html>
