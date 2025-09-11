@@ -1,8 +1,8 @@
 const axios = require('axios');
 const oauthhelper = require('./oauthhelper');
 
-const CONSUMERKEY = '5e5f558e-b9ef-4373-afbc-1821651b5e7c';
-const CONSUMERSECRET = '5m0hSBUImv8lDzcsfR0AR3sttH1kK2xOeZS';
+const CONSUMERKEY = '5e5f55*************5e7c';
+const CONSUMERSECRET = '5m****************ZS';
 
 var timestamp = new Date().getTime();
 const currts = Math.floor(timestamp / 1000);
@@ -61,4 +61,5 @@ function generatenonce(length) {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
+
 }
